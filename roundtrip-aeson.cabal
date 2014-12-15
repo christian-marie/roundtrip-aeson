@@ -5,9 +5,9 @@ description:         Un-/parse JSON with roundtrip invertible syntax definitions
 homepage:            https://github.com/anchor/roundtrip-aeson
 license:             BSD3
 license-file:        LICENSE
-author:              Thomas Sutton
+author:              Thomas Sutton, Christian Marie <christian@ponies.io>
 maintainer:          Anchor Engineering <engineering@anchor.net.au>
--- copyright:           
+copyright:           Anchor Systems
 category:            Data
 build-type:          Simple
 -- extra-source-files:  
