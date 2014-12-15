@@ -5,7 +5,7 @@ description:         Un-/parse JSON with roundtrip invertible syntax definitions
 homepage:            https://github.com/anchor/roundtrip-aeson
 license:             BSD3
 license-file:        LICENSE
-author:              Thomas Sutton, Christian Marie <christian@ponies.io>
+author:              Thomas Sutton <me@thomas-sutton.id.au>, Christian Marie <christian@ponies.io>
 maintainer:          Anchor Engineering <engineering@anchor.net.au>
 copyright:           Anchor Systems
 category:            Data
@@ -21,8 +21,6 @@ library
   default-language:    Haskell2010
   hs-source-dirs:      lib
   exposed-modules:     Data.Aeson.RoundTrip
-                     , Data.Aeson.RoundTrip.Parser
-                     , Data.Aeson.RoundTrip.Printer
   build-depends:       base >=4.7 && <4.8
                      , aeson
                      , bytestring
