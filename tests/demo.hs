@@ -2,13 +2,13 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Main where
 
-import           Control.Isomorphism.Partial
-import           Data.Aeson
-import           Data.Aeson.Lens
-import qualified Data.ByteString.Lazy.Char8  as L
-import           Text.Roundtrip.Classes
+import Control.Isomorphism.Partial
+import Data.Aeson
+import Data.Aeson.Lens
+import qualified Data.ByteString.Lazy.Char8 as L
+import Text.Roundtrip.Classes
 
-import           Data.Aeson.RoundTrip
+import Data.Aeson.RoundTrip
 
 -- * Example
 

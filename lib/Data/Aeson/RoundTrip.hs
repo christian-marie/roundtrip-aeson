@@ -4,17 +4,17 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Data.Aeson.RoundTrip where
 
-import qualified Control.Category            as C
-import           Control.Isomorphism.Partial
-import           Control.Lens                hiding (Iso)
-import           Control.Monad               (mplus)
-import           Data.Aeson
-import           Data.Aeson.Lens
-import           Data.HashMap.Strict         (union)
-import           Data.Scientific
-import           Data.Text                   (Text)
-import qualified Data.Vector                 as V
-import           Text.Roundtrip.Classes
+import qualified Control.Category as C
+import Control.Isomorphism.Partial
+import Control.Lens hiding (Iso)
+import Control.Monad (mplus)
+import Data.Aeson
+import Data.Aeson.Lens
+import Data.HashMap.Strict (union)
+import Data.Scientific
+import Data.Text (Text)
+import qualified Data.Vector as V
+import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
 --
