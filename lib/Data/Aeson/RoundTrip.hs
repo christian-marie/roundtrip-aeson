@@ -7,7 +7,7 @@ module Data.Aeson.RoundTrip where
 import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
-import Control.Monad (mplus)
+import Control.Monad (mplus, (>=>), liftM2)
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
@@ -18,9 +18,11 @@ import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
 --
--- $ Oh my!
-
 -- | Demote a lens 'Prism' to a partial 'Iso'.
+--
+-- This involves strapping a _Just onto the review as a prism is slightly
+-- "stronger" than an Iso anyway. Bear in mind that this is not a lens iso but
+-- a RoundTrip iso.
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
 
@@ -42,15 +44,15 @@ class (Syntax delta) => JsonSyntax delta where
 
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
-jsonBool = (demote _Bool) <$> value
+jsonBool = demote _Bool <$> value
 
 -- | Un-/parse a number JSON value.
 jsonNumber :: JsonSyntax s => s Scientific
-jsonNumber = (demote _Number) <$> value
+jsonNumber = demote _Number <$> value
 
 -- | Un-/parse a string JSON value.
 jsonString :: JsonSyntax s => s Text
-jsonString = (demote _String) <$> value
+jsonString = demote _String <$> value
 
 -- | Un-/parse a value in a JSON object field.
 jsonField
@@ -58,7 +60,7 @@ jsonField
     => Text
     -> Iso Value v
     -> s v
-jsonField name syntax = (syntax C.. (demote $ keyPrism name)) <$> value
+jsonField name syntax = syntax C.. demote (keyPrism name) <$> value
 
 -- ** Unparsing
 
@@ -67,128 +69,59 @@ data JsonBuilder a = JsonBuilder
     { runBuilder :: a -> Maybe Value }
 
 instance IsoFunctor JsonBuilder where
-    (<$>) = builderApply
+    -- | Functor from Isos to Hask restricted to JsonBuilder
+    i <$> JsonBuilder b = JsonBuilder $ unapply i >=> b
 
 instance ProductFunctor JsonBuilder where
-    (<*>) = builderConcat
+    -- | Join two builders together into a single builder which accepts a pair
+    -- of inputs.
+    JsonBuilder p <*> JsonBuilder q = JsonBuilder $ \(a,b) -> do
+        ea <- p a
+        eb <- q b
+        merge ea eb
+      where
+        merge (Object a) (Object b) = Just . Object $ a `union` b
+        merge (Array a) (Array b) = Just . Array $ a V.++ b
+        -- We don't support the merging of top multiple top-level items, that
+        -- they don't make sense.
+        merge _ _ = Nothing
 
 instance Alternative JsonBuilder where
-    (<|>) = builderAlternative
-    (<||>) = builderAlternative
-    empty = builderEmpty
+    -- | Run one 'JsonBuilder' or, iff it fails, another.
+    JsonBuilder p <||> JsonBuilder q = JsonBuilder $ \a -> p a `mplus` q a
+    -- | An empty 'JsonBuilder' always fails.
+    empty = JsonBuilder $ const Nothing
 
 instance Syntax JsonBuilder where
-    pure = builderPure
+    -- | 'JsonBuilder' which accepts only a specific value or else fails.
+    pure x = JsonBuilder $ \y ->
+        if x == y
+            then Just Null
+            else Nothing
 
 instance JsonSyntax JsonBuilder where
-    value = JsonBuilder $ \v -> Just v
-
--- | Apply an 'Iso' to values passing into a 'JsonBuilder'.
-builderApply
-    :: Iso a b
-    -> JsonBuilder a
-    -> JsonBuilder b
-builderApply i (JsonBuilder b) = JsonBuilder $ \v ->
-    case unapply i v of
-        Just  x -> b x
-        Nothing -> Nothing
-
--- | Join two builders together into a single builder which accepts a pair of
--- inputs.
-builderConcat
-    :: JsonBuilder a
-    -> JsonBuilder b
-    -> JsonBuilder (a,b)
-builderConcat (JsonBuilder p) (JsonBuilder q) = JsonBuilder $ \(a,b) -> do
-    ea <- p a
-    eb <- q b
-    merge ea eb
-  where
-    merge (Object a) (Object b) = Just . Object $ a `union` b
-    merge (Array a) (Array b) = Just . Array $ a V.++ b
-    merge _ _ = Nothing
-
--- | Run one 'JsonBuilder' or, iff it fails, another.
-builderAlternative
-    :: JsonBuilder a
-    -> JsonBuilder a
-    -> JsonBuilder a
-builderAlternative (JsonBuilder p) (JsonBuilder q) =
-    JsonBuilder $ \a -> p a `mplus` q a
-
--- | An empty 'JsonBuilder' always fails.
-builderEmpty
-    :: JsonBuilder a
-builderEmpty = JsonBuilder $ \_ -> Nothing
-
--- | 'JsonBuilder' which accepts only a specific value or else fails.
-builderPure
-    :: (Eq a)
-    => a
-    -> JsonBuilder a
-builderPure x = JsonBuilder $ \y ->
-    if x == y
-        then return Null
-        else Nothing
-
--- ** Parsing
+    value = JsonBuilder Just 
 
 -- | Parse a JSON 'Value' into some thing we can use.
 data JsonParser a = JsonParser
     { runParser :: Value -> Maybe a }
 
 instance IsoFunctor JsonParser where
-    (<$>) = parserApply
+    i <$> JsonParser p = JsonParser $ p >=> apply i
 
 instance ProductFunctor JsonParser where
-    (<*>) = parserConcat
+    -- | Apply two parsers, returning the results of both.
+    JsonParser p <*> JsonParser q = JsonParser $ \v -> liftM2 (,) (p v) (q v)
 
 instance Alternative JsonParser where
-    (<|>) = parserAlternative
-    (<||>) = parserAlternative
-    empty = parserEmpty
+    -- | Apply one parser or, iff it fails, another.
+    JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
+    -- | Parser which doesn't parse anything.
+    empty = JsonParser $ \_ -> Nothing
 
 instance Syntax JsonParser where
-    pure = parserPure
+    -- | Just return a fixed value.
+    pure = JsonParser . const . Just 
 
 instance JsonSyntax JsonParser where
-    value = JsonParser $ \v -> Just v
-
--- | Apply an 'Iso' over a 'JsonBuilder'.
-parserApply
-    :: Iso a b
-    -> JsonParser a
-    -> JsonParser b
-parserApply i (JsonParser p) = JsonParser $ \v -> do
-    a <- p v
-    apply i a
-
--- | Apply two parsers, returning the results of both.
-parserConcat
-    :: JsonParser a
-    -> JsonParser b
-    -> JsonParser (a,b)
-parserConcat (JsonParser p) (JsonParser q) = JsonParser $ \v -> do
-    a <- p v
-    b <- q v
-    return (a,b)
-
--- | Apply one parser or, iff it fails, another.
-parserAlternative
-    :: JsonParser a
-    -> JsonParser a
-    -> JsonParser a
-parserAlternative (JsonParser p) (JsonParser q) = JsonParser $ \v -> do
-    p v `mplus` q v
-
--- | Parser which doesn't parse anything.
-parserEmpty
-    :: JsonParser a
-parserEmpty = JsonParser $ \_ -> Nothing
-
--- | Just return a fixed value.
-parserPure
-    :: (Eq a)
-    => a
-    -> JsonParser a
-parserPure x = JsonParser $ \_ -> return x
+    value = JsonParser Just
