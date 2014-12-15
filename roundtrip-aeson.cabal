@@ -13,21 +13,36 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
+source-repository HEAD
+  type: git
+  location: https://github.com/anchor/roundtrip-aeson
+
 library
   default-language:    Haskell2010
   hs-source-dirs:      lib
   exposed-modules:     Data.Aeson.RoundTrip
                      , Data.Aeson.RoundTrip.Parser
                      , Data.Aeson.RoundTrip.Printer
-  -- other-modules:       
   build-depends:       base >=4.7 && <4.8
-                     , text >=1.2 && <1.3
-                     , containers >=0.5 && <0.6
-                     , roundtrip
                      , aeson
+                     , bytestring
+                     , containers >=0.5 && <0.6
                      , lens
                      , lens-aeson
-                     , bytestring
+                     , roundtrip
+                     , scientific
+                     , text >=1.2 && <1.3
                      , unordered-containers
                      , vector
-                     , scientific
+
+test-suite demo
+  type:                exitcode-stdio-1.0
+  default-language:    Haskell2010
+  hs-source-dirs:      tests
+  main-is:             demo.hs
+  build-depends:       base >=4.7 && <4.8
+                     , aeson
+                     , bytestring
+                     , lens-aeson
+                     , roundtrip
+                     , roundtrip-aeson
