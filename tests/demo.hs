@@ -11,13 +11,14 @@ import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
+import Text.Roundtrip.Combinators
 
 import Data.Aeson.RoundTrip
 
 -- * Example
 
 data Invoice
-    = Unpaid Bool Integer [Bool]
+    = Unpaid Integer [Bool]
     | Paid Integer
   deriving (Show)
 
@@ -34,11 +35,12 @@ isoListVector = unsafeMakeIso (Just . V.toList) (Just . V.fromList)
 invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
-        <$> jsonField "foo" jsonBool
-        <*> jsonField "bar" (demote _Integer <$> jsonNumber)
+        <$> jsonField "paid" (jsonBool `is` False)
+         *> jsonField "bar" (demote _Integer <$> jsonNumber)
         <*> jsonField "baz" (isoListVector <$> jsonArray (demote _Bool <$> value))
     <|> paid
-        <$> jsonField "bar" (demote _Integer <$> value)
+        <$> jsonField "paid" (jsonBool `is` True)
+         *> jsonField "bar" (demote _Integer <$> value)
 
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
@@ -49,7 +51,7 @@ main :: IO ()
 main = do
     putStrLn "FIELDS"
     putStrLn "\tUNPARSE"
-    let Just x = runBuilder invoiceSyntax $ Unpaid False 40 [False]
+    let Just x = runBuilder invoiceSyntax $ Unpaid 40 [False]
     let Just y = runBuilder invoiceSyntax $ Paid 42
     L.putStrLn $ "\t" <> encode x
     L.putStrLn $ "\t" <> encode y
@@ -60,7 +62,7 @@ main = do
     putStrLn "\n\nLISTS"
     putStrLn "\tUNPARSE"
     let Just z1 = runBuilder accountSyntax $ Account "Foo"
-            [ Unpaid False 40 [False]
+            [ Unpaid 40 [False]
             , Paid 42
             ]
     L.putStrLn $ "\t" <> encode z1

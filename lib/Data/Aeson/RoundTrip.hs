@@ -52,6 +52,10 @@ class (Syntax delta) => JsonSyntax delta where
     -- | Parse a Vector from a JSON array.
     jsonArray :: delta v -> delta (Vector v)
 
+is :: (JsonSyntax delta, Eq a) => delta a -> a -> delta ()
+is s a =
+    unsafeMakeIso (\v -> if v == a then Just () else Nothing) (const $ Just a) <$> s
+
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
 jsonBool = demote _Bool <$> value
@@ -139,3 +143,4 @@ instance JsonSyntax JsonParser where
     jsonArray (JsonParser p) = JsonParser $ \v ->
         case v of Array x -> V.mapM p x
                   _       -> Nothing
+
