@@ -16,13 +16,15 @@ Using `roundtrip-aeson` is relatively straightforward:
 
 1. Define your data type;
 
-2. Define [isomorphisms][3] for the constructors;
+2. Define [partial isomorphisms][3] for the constructors (probably using the
+[template haskell][4]);
 
 2. Describe the syntax of its JSON representation; and
 
 3. Use that representation to build and parse JSON.
 
 [3]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-Iso.html
+[4]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-TH.html
 
 ````{.haskell}
 import Data.Aeson.RoundTrip
@@ -52,6 +54,6 @@ main = do
     print $ runParser invoiceSyntax x
 ````
 
-See [tests/demo.hs][4] for the complete source of this example.
+See [tests/demo.hs][5] for the complete source of this example.
 
-[4]: https://github.com/anchor/roundtrip-aeson/blob/master/tests/demo.hs
+[5]: https://github.com/anchor/roundtrip-aeson/blob/master/tests/demo.hs
