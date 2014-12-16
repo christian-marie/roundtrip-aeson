@@ -44,3 +44,5 @@ test-suite demo
                      , lens-aeson
                      , roundtrip
                      , roundtrip-aeson
+                     , text
+                     , vector
