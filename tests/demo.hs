@@ -18,7 +18,7 @@ import Data.Aeson.RoundTrip
 
 data Invoice
     = Unpaid Bool Integer [Bool]
-    | Paid Integer
+    | Paid Double
   deriving (Show)
 
 defineIsomorphisms ''Invoice
@@ -35,10 +35,10 @@ invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
         <$> jsonField "foo" jsonBool
-        <*> jsonField "bar" (demote _Integer <$> jsonNumber)
-        <*> jsonField "baz" (isoListVector <$> jsonArray (demote _Bool <$> value))
+        <*> jsonField "bar" jsonIntegral
+        <*> jsonField "baz" (isoListVector <$> jsonArray jsonBool)
     <|> paid
-        <$> jsonField "bar" (demote _Integer <$> value)
+        <$> jsonField "bar" jsonRealFloat
 
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
