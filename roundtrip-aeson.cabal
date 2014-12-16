@@ -41,6 +41,9 @@ test-suite demo
   build-depends:       base >=4.7 && <4.8
                      , aeson
                      , bytestring
+                     , lens
                      , lens-aeson
                      , roundtrip
                      , roundtrip-aeson
+                     , text
+                     , vector
