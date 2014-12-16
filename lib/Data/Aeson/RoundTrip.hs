@@ -39,7 +39,7 @@ keyPrism k = prism' (\part -> Object [(k,part)]) (^? key k)
 
 -- | Partial isomorphism between 'Vector' and lists.
 list :: Iso (Vector v) [v]
-list = demote $ prism' (V.fromList) (Just . V.toList)
+list = demote $ prism' V.fromList (Just . V.toList)
 
 -- * JSON Syntax
 
@@ -129,7 +129,7 @@ instance Alternative JsonParser where
     -- | Apply one parser or, iff it fails, another.
     JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
     -- | Parser which doesn't parse anything.
-    empty = JsonParser $ \_ -> Nothing
+    empty = JsonParser $ const Nothing
 
 instance Syntax JsonParser where
     -- | Just return a fixed value.
@@ -138,12 +138,12 @@ instance Syntax JsonParser where
 instance JsonSyntax JsonParser where
     value = JsonParser Just
 
-    jsonArray (JsonParser p) = JsonParser $ \v -> do
+    jsonArray (JsonParser p) = JsonParser $ \v ->
         case v of
             Array vs -> V.mapM p vs
             _        -> Nothing
 
     jsonField name (JsonParser p) = JsonParser $ \v ->
         case v of
-            Object m -> (HM.lookup name m) >>= p
+            Object m -> HM.lookup name m >>= p
             _        -> Nothing
