@@ -7,7 +7,7 @@ module Data.Aeson.RoundTrip where
 import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
-import Control.Monad (mplus, (>=>), liftM2)
+import Control.Monad (mplus, (>=>), liftM2, join)
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
@@ -15,6 +15,7 @@ import Data.Scientific
 import Data.Text (Text)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
+import Text.Roundtrip.Combinators
 
 -- * Lenses, Prisms, and Isomorphisms.
 --
@@ -42,6 +43,10 @@ class (Syntax delta) => JsonSyntax delta where
     -- | Parse a JSON value.
     value :: delta Value
 
+    runSub :: delta v -> delta Value -> delta v
+
+    jsonArray :: delta v -> delta [v]
+
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
 jsonBool = demote _Bool <$> value
@@ -58,9 +63,9 @@ jsonString = demote _String <$> value
 jsonField
     :: JsonSyntax s
     => Text
-    -> Iso Value v
     -> s v
-jsonField name syntax = syntax C.. demote (keyPrism name) <$> value
+    -> s v
+jsonField name syntax = runSub syntax (demote (keyPrism name) <$> value)
 
 -- ** Unparsing
 
@@ -101,6 +106,11 @@ instance Syntax JsonBuilder where
 
 instance JsonSyntax JsonBuilder where
     value = JsonBuilder Just 
+    runSub (JsonBuilder a) (JsonBuilder b) = JsonBuilder $ \x -> a x >>= b
+    -- jsonArray :: delta Value -> delta v -> delta [v]
+    jsonArray (JsonBuilder p) = JsonBuilder $ \xs -> do
+        ys <- mapM p xs
+        return $ Array $ V.fromList ys
 
 -- | Parse a JSON 'Value' into some thing we can use.
 data JsonParser a = JsonParser
@@ -125,3 +135,7 @@ instance Syntax JsonParser where
 
 instance JsonSyntax JsonParser where
     value = JsonParser Just
+    runSub (JsonParser a) (JsonParser b) = JsonParser $ \v -> b v >>= a
+    jsonArray (JsonParser p) = JsonParser $ \v ->
+        case v of Array x -> mapM p (V.toList x)
+                  _       -> Nothing

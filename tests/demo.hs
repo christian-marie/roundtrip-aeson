@@ -13,7 +13,7 @@ import Data.Aeson.RoundTrip
 -- * Example
 
 data Invoice
-    = Unpaid Bool Integer Bool
+    = Unpaid Bool Integer [Bool]
     | Paid Integer
   deriving (Show)
 
@@ -22,16 +22,16 @@ defineIsomorphisms ''Invoice
 invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
-        <$> jsonField "foo" (demote _Bool)
-        <*> jsonField "bar" (demote _Integer)
-        <*> jsonField "baz" (demote _Bool)
+        <$> jsonField "foo" (demote _Bool <$> value)
+        <*> jsonField "bar" (demote _Integer <$> value)
+        <*> jsonField "baz" (jsonArray (demote _Bool <$> value))
     <|> paid
-        <$> jsonField "bar" (demote _Integer)
+        <$> jsonField "bar" (demote _Integer <$> value)
 
 main :: IO ()
 main = do
     putStrLn "UNPARSE"
-    let Just x = runBuilder invoiceSyntax $ Unpaid False 40 False
+    let Just x = runBuilder invoiceSyntax $ Unpaid False 40 [False]
     let Just y = runBuilder invoiceSyntax $ Paid 42
     L.putStrLn $ encode x
     L.putStrLn $ encode y
