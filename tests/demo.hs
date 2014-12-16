@@ -4,20 +4,20 @@ module Main where
 
 import Control.Isomorphism.Partial
 import Data.Aeson
-import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Char8 as L
 import Data.Monoid
 import Data.Text (Text)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
+import Text.Roundtrip.Combinators
 
 import Data.Aeson.RoundTrip
 
 -- * Example
 
 data Invoice
-    = Unpaid Bool Integer [Bool]
+    = Unpaid Integer [Bool]
     | Paid Double
   deriving (Show)
 
@@ -34,11 +34,12 @@ isoListVector = unsafeMakeIso (Just . V.toList) (Just . V.fromList)
 invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
-        <$> jsonField "foo" jsonBool
-        <*> jsonField "bar" jsonIntegral
+        <$> jsonField "paid" (jsonBool `is` False)
+         *> jsonField "bar" jsonIntegral
         <*> jsonField "baz" (isoListVector <$> jsonArray jsonBool)
     <|> paid
-        <$> jsonField "bar" jsonRealFloat
+        <$> jsonField "paid" (jsonBool `is` True)
+         *> jsonField "bar" jsonRealFloat
 
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
@@ -49,7 +50,7 @@ main :: IO ()
 main = do
     putStrLn "FIELDS"
     putStrLn "\tUNPARSE"
-    let Just x = runBuilder invoiceSyntax $ Unpaid False 40 [False]
+    let Just x = runBuilder invoiceSyntax $ Unpaid 40 [False]
     let Just y = runBuilder invoiceSyntax $ Paid 42
     L.putStrLn $ "\t" <> encode x
     L.putStrLn $ "\t" <> encode y
@@ -60,7 +61,7 @@ main = do
     putStrLn "\n\nLISTS"
     putStrLn "\tUNPARSE"
     let Just z1 = runBuilder accountSyntax $ Account "Foo"
-            [ Unpaid False 40 [False]
+            [ Unpaid 40 [False]
             , Paid 42
             ]
     L.putStrLn $ "\t" <> encode z1
