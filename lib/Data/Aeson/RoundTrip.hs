@@ -118,10 +118,10 @@ instance ProductFunctor JsonBuilder where
         eb <- q b
         merge ea eb
       where
+        -- We don't support the merging of anything but top level objects.
+        -- Anything else doesn't make sense, you can't define it as a valid
+        -- JSON document.
         merge (Object a) (Object b) = Just . Object $ a `union` b
-        merge (Array a) (Array b) = Just . Array $ a V.++ b
-        -- We don't support the merging of top multiple top-level items, that
-        -- they don't make sense.
         merge _ _ = Nothing
 
 instance Alternative JsonBuilder where
