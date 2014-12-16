@@ -30,10 +30,6 @@ defineIsomorphisms ''Value
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
 
--- | LOL
-overVector :: Iso a b -> Iso (Vector a) (Vector b)
-overVector i = unsafeMakeIso (V.mapM (apply i)) (V.mapM (unapply i))
-
 -- | Prism to access a particular key in a JSON object.
 --
 -- Only a valid prism if we assume that isomorphism is viewed from the non-JSON
