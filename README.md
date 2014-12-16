@@ -48,4 +48,4 @@ main = do
 
 See [tests/demo.hs][3] for the complete source of this example.
 
-[3]: blob/master/tests/demo.hs
+[3]: https://github.com/anchor/roundtrip-aeson/blob/master/tests/demo.hs
