@@ -4,20 +4,20 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Data.Aeson.RoundTrip where
 
-import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
-import Control.Monad (mplus, (>=>), liftM2)
+import Control.Monad (liftM2, mplus, (>=>))
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
 import Data.Scientific
 import Data.Text (Text)
+import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
---
+
 -- | Demote a lens 'Prism' to a partial 'Iso'.
 --
 -- This involves strapping a _Just onto the review as a prism is slightly
@@ -37,10 +37,20 @@ keyPrism k = prism' (\part -> Object [(k,part)]) (^? key k)
 
 -- * JSON Syntax
 
--- | Parse and unparse from/to JSON.
+-- | Parse and unparse JSON values.
 class (Syntax delta) => JsonSyntax delta where
-    -- | Parse a JSON value.
+
+    -- | Run a parser over some other parser.
+    --
+    -- This can be used to, e.g., traverse the fields of an 'Object'
+    -- constructor and parse the result.
+    runSub :: delta v -> delta Value -> delta v
+
+    -- | Parse any JSON value.
     value :: delta Value
+
+    -- | Parse a Vector from a JSON array.
+    jsonArray :: delta v -> delta (Vector v)
 
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
@@ -54,13 +64,13 @@ jsonNumber = demote _Number <$> value
 jsonString :: JsonSyntax s => s Text
 jsonString = demote _String <$> value
 
--- | Un-/parse a value in a JSON object field.
+-- | Un-/parse a field in a JSON object.
 jsonField
     :: JsonSyntax s
     => Text
-    -> Iso Value v
     -> s v
-jsonField name syntax = syntax C.. demote (keyPrism name) <$> value
+    -> s v
+jsonField name syntax = runSub syntax (demote (keyPrism name) <$> value)
 
 -- ** Unparsing
 
@@ -69,12 +79,9 @@ data JsonBuilder a = JsonBuilder
     { runBuilder :: a -> Maybe Value }
 
 instance IsoFunctor JsonBuilder where
-    -- | Functor from Isos to Hask restricted to JsonBuilder
     i <$> JsonBuilder b = JsonBuilder $ unapply i >=> b
 
 instance ProductFunctor JsonBuilder where
-    -- | Join two builders together into a single builder which accepts a pair
-    -- of inputs.
     JsonBuilder p <*> JsonBuilder q = JsonBuilder $ \(a,b) -> do
         ea <- p a
         eb <- q b
@@ -87,20 +94,24 @@ instance ProductFunctor JsonBuilder where
         merge _ _ = Nothing
 
 instance Alternative JsonBuilder where
-    -- | Run one 'JsonBuilder' or, iff it fails, another.
     JsonBuilder p <||> JsonBuilder q = JsonBuilder $ \a -> p a `mplus` q a
-    -- | An empty 'JsonBuilder' always fails.
+
     empty = JsonBuilder $ const Nothing
 
 instance Syntax JsonBuilder where
-    -- | 'JsonBuilder' which accepts only a specific value or else fails.
     pure x = JsonBuilder $ \y ->
         if x == y
             then Just Null
             else Nothing
 
 instance JsonSyntax JsonBuilder where
-    value = JsonBuilder Just 
+    value = JsonBuilder Just
+
+    runSub (JsonBuilder a) (JsonBuilder b) =
+        JsonBuilder $ a >=> b
+
+    jsonArray (JsonBuilder p) =
+        JsonBuilder $ V.mapM p >=> (return . Array)
 
 -- | Parse a JSON 'Value' into some thing we can use.
 data JsonParser a = JsonParser
@@ -110,18 +121,21 @@ instance IsoFunctor JsonParser where
     i <$> JsonParser p = JsonParser $ p >=> apply i
 
 instance ProductFunctor JsonParser where
-    -- | Apply two parsers, returning the results of both.
     JsonParser p <*> JsonParser q = JsonParser $ \v -> liftM2 (,) (p v) (q v)
 
 instance Alternative JsonParser where
-    -- | Apply one parser or, iff it fails, another.
     JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
-    -- | Parser which doesn't parse anything.
-    empty = JsonParser $ \_ -> Nothing
+
+    empty = JsonParser $ const Nothing
 
 instance Syntax JsonParser where
-    -- | Just return a fixed value.
-    pure = JsonParser . const . Just 
+    pure = JsonParser . const . Just
 
 instance JsonSyntax JsonParser where
     value = JsonParser Just
+
+    runSub (JsonParser a) (JsonParser b) = JsonParser $ b >=> a
+
+    jsonArray (JsonParser p) = JsonParser $ \v ->
+        case v of Array x -> V.mapM p x
+                  _       -> Nothing
