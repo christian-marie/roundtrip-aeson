@@ -36,7 +36,7 @@ invoiceSyntax =
     unpaid
         <$> jsonField "paid" (jsonBool `is` False)
          *> jsonField "bar" jsonIntegral
-        <*> jsonField "baz" (isoListVector <$> jsonArray jsonBool)
+        <*> jsonField "baz" (jsonList jsonBool)
     <|> paid
         <$> jsonField "paid" (jsonBool `is` True)
          *> jsonField "bar" jsonRealFloat
@@ -44,7 +44,7 @@ invoiceSyntax =
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
     <$> jsonField "name" jsonString
-    <*> jsonField "invoices" (isoListVector <$> jsonArray invoiceSyntax)
+    <*> jsonField "invoices" (jsonList invoiceSyntax)
 
 main :: IO ()
 main = do
