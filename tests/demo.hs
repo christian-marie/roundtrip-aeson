@@ -4,7 +4,6 @@ module Main where
 
 import Control.Isomorphism.Partial
 import Data.Aeson
-import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Char8 as L
 import Data.Monoid
 import Data.Text (Text)
@@ -19,7 +18,7 @@ import Data.Aeson.RoundTrip
 
 data Invoice
     = Unpaid Integer [Bool]
-    | Paid Integer
+    | Paid Double
   deriving (Show)
 
 defineIsomorphisms ''Invoice
@@ -36,11 +35,11 @@ invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
         <$> jsonField "paid" (jsonBool `is` False)
-         *> jsonField "bar" (demote _Integer <$> jsonNumber)
-        <*> jsonField "baz" (isoListVector <$> jsonArray (demote _Bool <$> value))
+         *> jsonField "bar" jsonIntegral
+        <*> jsonField "baz" (isoListVector <$> jsonArray jsonBool)
     <|> paid
         <$> jsonField "paid" (jsonBool `is` True)
-         *> jsonField "bar" (demote _Integer <$> value)
+         *> jsonField "bar" jsonRealFloat
 
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
