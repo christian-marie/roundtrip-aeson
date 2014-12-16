@@ -7,7 +7,8 @@ module Data.Aeson.RoundTrip where
 import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
-import Control.Monad (liftM2, mplus, (>=>))
+import qualified Control.Lens as L
+import Control.Monad (guard, liftM2, mplus, (>=>))
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
@@ -24,6 +25,11 @@ import Text.Roundtrip.Classes
 -- This involves strapping a _Just onto the review as a prism is slightly
 -- "stronger" than an Iso anyway. Bear in mind that this is not a lens iso but
 -- a RoundTrip iso.
+--
+-- This also works on lens isos, you can imagine this as :
+--
+--   demote :: L.Iso' a b -> Iso a b
+--
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
 
@@ -39,7 +45,7 @@ keyPrism k = prism' (\part -> Object [(k,part)]) (^? key k)
 -- * JSON Syntax
 
 -- | Parse and unparse JSON values.
-class (Syntax delta) => JsonSyntax delta where
+class Syntax delta => JsonSyntax delta where
 
     -- | Run a parser over some other parser.
     --
@@ -50,12 +56,22 @@ class (Syntax delta) => JsonSyntax delta where
     -- | Parse any JSON value.
     value :: delta Value
 
-    -- | Parse a Vector from a JSON array.
-    jsonArray :: delta v -> delta (Vector v)
+    -- | Given a syntax of vs, parse a vector of them if the Value this works
+    -- on is an "Array".
+    jsonVector :: delta v -> delta (Vector v)
 
+-- | Ensure that a value 'a' is "produced" or "consumed".
+--
+-- This is intended to be used with *> and <*
 is :: (JsonSyntax delta, Eq a) => delta a -> a -> delta ()
-is s a =
-    unsafeMakeIso (\v -> if v == a then Just () else Nothing) (const $ Just a) <$> s
+is s a = demote (prism' (const a) (guard . (a ==))) <$> s
+
+-- | Given a un-/parser of v, provide an un-/parser of [v].
+--
+-- This is, obviously, assuming that you've correctly pointed it at a list.
+jsonList :: JsonSyntax s => s v -> s [v]
+jsonList p =
+    demote (L.iso V.toList V.fromList) <$> jsonVector p
 
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
@@ -73,7 +89,7 @@ jsonIntegral = demote _Integral <$> value
 jsonRealFloat :: (RealFloat a, JsonSyntax s) => s a
 jsonRealFloat = i C.. demote _Number <$> value
   where
-    i = unsafeMakeIso (Just . toRealFloat) (Just . fromRational . toRational)
+    i = demote $ L.iso toRealFloat (fromRational . toRational)
 
 -- | Un-/parse a string JSON value.
 jsonString :: JsonSyntax s => s Text
@@ -125,7 +141,7 @@ instance JsonSyntax JsonBuilder where
     runSub (JsonBuilder a) (JsonBuilder b) =
         JsonBuilder $ a >=> b
 
-    jsonArray (JsonBuilder p) =
+    jsonVector (JsonBuilder p) =
         JsonBuilder $ V.mapM p >=> (return . Array)
 
 -- | Parse a JSON 'Value' into some thing we can use.
@@ -151,7 +167,7 @@ instance JsonSyntax JsonParser where
 
     runSub (JsonParser a) (JsonParser b) = JsonParser $ b >=> a
 
-    jsonArray (JsonParser p) = JsonParser $ \v ->
+    jsonVector (JsonParser p) = JsonParser $ \v ->
         case v of Array x -> V.mapM p x
                   _       -> Nothing
 
