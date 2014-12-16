@@ -4,20 +4,24 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Data.Aeson.RoundTrip where
 
-import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
-import Control.Monad (mplus, (>=>), liftM2)
+import Control.Monad (liftM2, mplus, (>=>))
 import Data.Aeson
 import Data.Aeson.Lens
+import qualified Data.HashMap.Strict as HM
 import Data.HashMap.Strict (union)
 import Data.Scientific
 import Data.Text (Text)
+import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
---
+
+-- | Define 'Iso's for all aeson 'Value' constructors.
+defineIsomorphisms ''Value
+
 -- | Demote a lens 'Prism' to a partial 'Iso'.
 --
 -- This involves strapping a _Just onto the review as a prism is slightly
@@ -26,14 +30,16 @@ import Text.Roundtrip.Classes
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
 
-defineIsomorphisms ''Value
-
 -- | Prism to access a particular key in a JSON object.
 --
 -- Only a valid prism if we assume that isomorphism is viewed from the non-JSON
 -- end of things. This forgets any context.
 keyPrism :: Text -> Prism' Value Value
 keyPrism k = prism' (\part -> Object [(k,part)]) (^? key k)
+
+-- | Partial isomorphism between 'Vector' and lists.
+list :: Iso (Vector v) [v]
+list = demote $ prism' (V.fromList) (Just . V.toList)
 
 -- * JSON Syntax
 
@@ -58,9 +64,35 @@ jsonString = demote _String <$> value
 jsonField
     :: JsonSyntax s
     => Text
-    -> Iso Value v
     -> s v
-jsonField name syntax = syntax C.. demote (keyPrism name) <$> value
+    -> s v
+jsonField _name _syntax = error "jsonField: not implemented"
+
+-- | 'jsonField' specialised to 's ~ JsonParser'.
+jsonFieldP
+    :: Text
+    -> JsonParser v
+    -> JsonParser v
+jsonFieldP name (JsonParser p) = JsonParser $ \v ->
+    case v of
+        Object m -> (HM.lookup name m) >>= p
+        _        -> Nothing
+
+-- | 'jsonField' specialised to 's ~ JsonBuilder'.
+jsonFieldB
+    :: Text
+    -> JsonBuilder v
+    -> JsonBuilder v
+jsonFieldB name (JsonBuilder b) = JsonBuilder $ \v -> do
+    v' <- b v
+    return . Object $ [ (name,v') ] 
+
+-- | Un-/parse a 'Vector' of values in a JSON list.
+jsonArray
+    :: JsonSyntax s
+    => s v
+    -> s (Vector v)
+jsonArray _p = error "jsonArray: not implemented"
 
 -- ** Unparsing
 
@@ -100,7 +132,7 @@ instance Syntax JsonBuilder where
             else Nothing
 
 instance JsonSyntax JsonBuilder where
-    value = JsonBuilder Just 
+    value = JsonBuilder Just
 
 -- | Parse a JSON 'Value' into some thing we can use.
 data JsonParser a = JsonParser
@@ -121,7 +153,7 @@ instance Alternative JsonParser where
 
 instance Syntax JsonParser where
     -- | Just return a fixed value.
-    pure = JsonParser . const . Just 
+    pure = JsonParser . const . Just
 
 instance JsonSyntax JsonParser where
     value = JsonParser Just

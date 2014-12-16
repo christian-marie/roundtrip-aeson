@@ -3,9 +3,13 @@
 module Main where
 
 import Control.Isomorphism.Partial
+import Control.Lens.Prism
 import Data.Aeson
 import Data.Aeson.Lens
 import qualified Data.ByteString.Lazy.Char8 as L
+import Data.Text (Text)
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Text.Roundtrip.Classes
 
 import Data.Aeson.RoundTrip
@@ -19,14 +23,25 @@ data Invoice
 
 defineIsomorphisms ''Invoice
 
+data Account = Account { name :: Text, invoices :: [Invoice] }
+  deriving Show
+
+defineIsomorphisms ''Account
+
 invoiceSyntax :: JsonSyntax s => s Invoice
 invoiceSyntax =
     unpaid
-        <$> jsonField "foo" (demote _Bool)
-        <*> jsonField "bar" (demote _Integer)
-        <*> jsonField "baz" (demote _Bool)
+        <$> jsonField "foo" jsonBool
+        <*> jsonField "bar" (demote _Integer <$> jsonNumber)
+        <*> jsonField "baz" jsonBool
     <|> paid
-        <$> jsonField "bar" (demote _Integer)
+        <$> jsonField "bar" (demote _Integer <$> jsonNumber)
+
+
+accountSyntax :: JsonSyntax s => s Account
+accountSyntax = account
+    <$> jsonField "name" jsonString
+    <*> (list <$> (jsonArray invoiceSyntax))
 
 main :: IO ()
 main = do
@@ -35,6 +50,16 @@ main = do
     let Just y = runBuilder invoiceSyntax $ Paid 42
     L.putStrLn $ encode x
     L.putStrLn $ encode y
-    putStrLn "PARSE"
+    putStrLn "\nPARSE"
     print (runParser invoiceSyntax x)
     print (runParser invoiceSyntax y)
+
+    putStrLn "\n\nLists"
+    {-
+    let Just z = runBuilder accountSyntax . Account $ V.fromList
+            [ Unpaid False 40 False
+            , Unpaid True 50 False
+            ]
+    L.putStrLn $ encode z
+    print (runParser accountSyntax z)
+    -}
