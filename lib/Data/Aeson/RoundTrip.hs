@@ -9,8 +9,8 @@ import Control.Lens hiding (Iso)
 import Control.Monad (liftM2, mplus, (>=>))
 import Data.Aeson
 import Data.Aeson.Lens
-import qualified Data.HashMap.Strict as HM
 import Data.HashMap.Strict (union)
+import qualified Data.HashMap.Strict as HM
 import Data.Scientific
 import Data.Text (Text)
 import Data.Vector (Vector)
@@ -85,7 +85,7 @@ jsonFieldB
     -> JsonBuilder v
 jsonFieldB name (JsonBuilder b) = JsonBuilder $ \v -> do
     v' <- b v
-    return . Object $ [ (name,v') ] 
+    return . Object $ [ (name,v') ]
 
 -- | Un-/parse a 'Vector' of values in a JSON list.
 jsonArray
@@ -93,6 +93,23 @@ jsonArray
     => s v
     -> s (Vector v)
 jsonArray _p = error "jsonArray: not implemented"
+
+-- | 'jsonArray' specialised to `s ~ JsonParser`.
+jsonArrayP
+    :: JsonParser v
+    -> JsonParser (Vector v)
+jsonArrayP (JsonParser p) = JsonParser $ \v -> do
+    case v of
+        Array vs -> V.mapM p vs
+        _        -> Nothing
+
+-- | 'jsonArray' specialised to `s ~ JsonBuilder`.
+jsonArrayB
+    :: JsonBuilder v
+    -> JsonBuilder (Vector v)
+jsonArrayB (JsonBuilder b) = JsonBuilder $ \v -> do
+    v' <- V.mapM b v
+    return . Array $ v'
 
 -- ** Unparsing
 
