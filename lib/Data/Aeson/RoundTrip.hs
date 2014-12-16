@@ -30,6 +30,10 @@ defineIsomorphisms ''Value
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
 
+-- | LOL
+overVector :: Iso a b -> Iso (Vector a) (Vector b)
+overVector i = unsafeMakeIso (V.mapM (apply i)) (V.mapM (unapply i))
+
 -- | Prism to access a particular key in a JSON object.
 --
 -- Only a valid prism if we assume that isomorphism is viewed from the non-JSON
@@ -48,6 +52,12 @@ class (Syntax delta) => JsonSyntax delta where
     -- | Parse a JSON value.
     value :: delta Value
 
+    -- | Parse a JSON array.
+    jsonArray :: delta v -> delta (Vector v)
+
+    -- | Parse a JSON object field.
+    jsonField :: Text -> delta v -> delta v
+
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
 jsonBool = demote _Bool <$> value
@@ -59,57 +69,6 @@ jsonNumber = demote _Number <$> value
 -- | Un-/parse a string JSON value.
 jsonString :: JsonSyntax s => s Text
 jsonString = demote _String <$> value
-
--- | Un-/parse a value in a JSON object field.
-jsonField
-    :: JsonSyntax s
-    => Text
-    -> s v
-    -> s v
-jsonField _name _syntax = error "jsonField: not implemented"
-
--- | 'jsonField' specialised to 's ~ JsonParser'.
-jsonFieldP
-    :: Text
-    -> JsonParser v
-    -> JsonParser v
-jsonFieldP name (JsonParser p) = JsonParser $ \v ->
-    case v of
-        Object m -> (HM.lookup name m) >>= p
-        _        -> Nothing
-
--- | 'jsonField' specialised to 's ~ JsonBuilder'.
-jsonFieldB
-    :: Text
-    -> JsonBuilder v
-    -> JsonBuilder v
-jsonFieldB name (JsonBuilder b) = JsonBuilder $ \v -> do
-    v' <- b v
-    return . Object $ [ (name,v') ]
-
--- | Un-/parse a 'Vector' of values in a JSON list.
-jsonArray
-    :: JsonSyntax s
-    => s v
-    -> s (Vector v)
-jsonArray _p = error "jsonArray: not implemented"
-
--- | 'jsonArray' specialised to `s ~ JsonParser`.
-jsonArrayP
-    :: JsonParser v
-    -> JsonParser (Vector v)
-jsonArrayP (JsonParser p) = JsonParser $ \v -> do
-    case v of
-        Array vs -> V.mapM p vs
-        _        -> Nothing
-
--- | 'jsonArray' specialised to `s ~ JsonBuilder`.
-jsonArrayB
-    :: JsonBuilder v
-    -> JsonBuilder (Vector v)
-jsonArrayB (JsonBuilder b) = JsonBuilder $ \v -> do
-    v' <- V.mapM b v
-    return . Array $ v'
 
 -- ** Unparsing
 
@@ -151,6 +110,14 @@ instance Syntax JsonBuilder where
 instance JsonSyntax JsonBuilder where
     value = JsonBuilder Just
 
+    jsonField name (JsonBuilder b) = JsonBuilder $ \v -> do
+        v' <- b v
+        return . Object $ [ (name,v') ]
+
+    jsonArray (JsonBuilder b) = JsonBuilder $ \v -> do
+        v' <- V.mapM b v
+        return $ Array v'
+
 -- | Parse a JSON 'Value' into some thing we can use.
 data JsonParser a = JsonParser
     { runParser :: Value -> Maybe a }
@@ -174,3 +141,13 @@ instance Syntax JsonParser where
 
 instance JsonSyntax JsonParser where
     value = JsonParser Just
+
+    jsonArray (JsonParser p) = JsonParser $ \v -> do
+        case v of
+            Array vs -> V.mapM p vs
+            _        -> Nothing
+
+    jsonField name (JsonParser p) = JsonParser $ \v ->
+        case v of
+            Object m -> (HM.lookup name m) >>= p
+            _        -> Nothing

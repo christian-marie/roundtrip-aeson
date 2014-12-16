@@ -19,7 +19,7 @@ import Data.Aeson.RoundTrip
 data Invoice
     = Unpaid Bool Integer Bool
     | Paid Integer
-  deriving (Show)
+  deriving (Eq, Show)
 
 defineIsomorphisms ''Invoice
 
@@ -37,11 +37,10 @@ invoiceSyntax =
     <|> paid
         <$> jsonField "bar" (demote _Integer <$> jsonNumber)
 
-
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
     <$> jsonField "name" jsonString
-    <*> (list <$> (jsonArray invoiceSyntax))
+    <*> jsonField "invoices" (list <$> (jsonArray invoiceSyntax))
 
 main :: IO ()
 main = do
@@ -55,11 +54,9 @@ main = do
     print (runParser invoiceSyntax y)
 
     putStrLn "\n\nLists"
-    {-
-    let Just z = runBuilder accountSyntax . Account $ V.fromList
+    let Just z = runBuilder accountSyntax $ Account "Thomas" 
             [ Unpaid False 40 False
-            , Unpaid True 50 False
+            , Paid 42
             ]
     L.putStrLn $ encode z
     print (runParser accountSyntax z)
-    -}
