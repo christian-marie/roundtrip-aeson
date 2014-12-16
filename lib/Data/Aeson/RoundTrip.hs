@@ -66,6 +66,9 @@ class Syntax delta => JsonSyntax delta where
 is :: (JsonSyntax delta, Eq a) => delta a -> a -> delta ()
 is s a = demote (prism' (const a) (guard . (a ==))) <$> s
 
+-- | Given a un-/parser of v, provide an un-/parser of [v].
+--
+-- This is, obviously, assuming that you've correctly pointed it at a list.
 jsonList :: JsonSyntax s => s v -> s [v]
 jsonList p =
     demote (L.iso V.toList V.fromList) <$> jsonVector p
