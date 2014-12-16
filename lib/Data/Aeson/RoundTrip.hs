@@ -4,6 +4,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Data.Aeson.RoundTrip where
 
+import qualified Control.Category as C
 import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
 import Control.Monad (liftM2, mplus, (>=>))
@@ -59,6 +60,16 @@ jsonBool = demote _Bool <$> value
 -- | Un-/parse a number JSON value.
 jsonNumber :: JsonSyntax s => s Scientific
 jsonNumber = demote _Number <$> value
+
+-- | Un-/parse an integral number JSON value.
+jsonIntegral :: (Integral a, JsonSyntax s) => s a
+jsonIntegral = demote _Integral <$> value
+
+-- | Un-/parse a floating number JSON value.
+jsonRealFloat :: (RealFloat a, JsonSyntax s) => s a
+jsonRealFloat = i C.. demote _Number <$> value
+  where
+    i = unsafeMakeIso (Just . toRealFloat) (Just . fromRational . toRational)
 
 -- | Un-/parse a string JSON value.
 jsonString :: JsonSyntax s => s Text
