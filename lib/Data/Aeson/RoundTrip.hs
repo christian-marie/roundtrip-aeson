@@ -12,6 +12,7 @@ import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
 import qualified Control.Lens as L
 import Control.Monad (guard, liftM2, mplus, (>=>))
+import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
@@ -61,6 +62,14 @@ class Syntax s => JsonSyntax s where
 -- This is intended to be used infix in conjunction with *> and <*
 is :: (JsonSyntax s, Eq a) => s a -> a -> s ()
 is s a = demote (prism' (const a) (guard . (a ==))) <$> s
+
+
+-- | With Arbitrary Thing: Given a thing, ensure that it is always included on
+-- the way "back" from JSON, but never ends up in the JSON document.
+--
+-- This is almost like pure, going one way.
+wat :: JsonSyntax s => a -> s a
+wat a = demote (prism' (const $ Object mempty) (const $ Just a)) <$> value
 
 -- | Un-/parse from within a field in a JSON object.
 jsonField
