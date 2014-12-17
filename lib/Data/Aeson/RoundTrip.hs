@@ -5,7 +5,7 @@
 -- TH does not generate signatures
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module Data.Aeson.RoundTrip where
+module Data.Aeson.RoundTrip where -- better: Data.Aeson.Roundtrip
 
 import qualified Control.Category as C
 import Control.Isomorphism.Partial
@@ -36,6 +36,7 @@ import Text.Roundtrip.Classes
 --
 demote :: Prism' a b -> Iso a b
 demote p = unsafeMakeIso (preview p) (review (_Just . p))
+-- the demoe function seems to be a generally useful function. Is it the right place here?
 
 -- * JSON Syntax
 
@@ -68,6 +69,7 @@ is s a = demote (prism' (const a) (guard . (a ==))) <$> s
 -- the way "back" from JSON, but never ends up in the JSON document.
 --
 -- This is almost like pure, going one way.
+-- what's the difference with respect to pure?
 wat :: JsonSyntax s => a -> s a
 wat a = demote (prism' (const $ Object mempty) (const $ Just a)) <$> value
 
@@ -136,6 +138,8 @@ instance ProductFunctor JsonBuilder where
         -- We don't support the merging of anything but top level objects.
         -- Anything else doesn't make sense, you can't define it as a valid
         -- JSON document.
+        --
+        -- The following note should definitely go into some visible place. Did you think about encoding this invariant in the types? I shortly did but didn't come up with a nice solution.
         --
         -- Basically, <*> should only appear between things which look up an
         -- object. This does not make sense:
