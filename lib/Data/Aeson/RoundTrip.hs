@@ -12,13 +12,13 @@ import Control.Isomorphism.Partial
 import Control.Lens hiding (Iso)
 import qualified Control.Lens as L
 import Control.Monad (guard, liftM2, mplus, (>=>))
-import Data.Monoid
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
+import Data.Maybe
+import Data.Monoid
 import Data.Scientific
 import Data.Text (Text)
-import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
 
@@ -51,10 +51,6 @@ class Syntax s => JsonSyntax s where
     -- | Parse any JSON value.
     value :: s Value
 
-    -- | Given a syntax of vs, parse a vector of them if the Value this works
-    -- on is an "Array".
-    jsonVector :: s v -> s (Vector v)
-
 -- * Combinators
 
 -- | Ensure that a value 'a' is "produced" or "consumed".
@@ -62,7 +58,6 @@ class Syntax s => JsonSyntax s where
 -- This is intended to be used infix in conjunction with *> and <*
 is :: (JsonSyntax s, Eq a) => s a -> a -> s ()
 is s a = demote (prism' (const a) (guard . (a ==))) <$> s
-
 
 -- | With Arbitrary Thing: Given a thing, ensure that it is always included on
 -- the way "back" from JSON, but never ends up in the JSON document.
@@ -84,13 +79,6 @@ jsonField k syntax = runSub syntax (keyIso <$> value)
     -- Only valid if we assume that isomorphism is viewed from the non-JSON end
     -- of things. This forgets any context.
     keyIso = demote $ prism' (\part -> Object [(k,part)]) (^? key k)
-
--- | Run a un/-parser over a JSON list.
---
--- This, obviously, assumes that you've correctly pointed it at a list.
-jsonList :: JsonSyntax s => s v -> s [v]
-jsonList p =
-    demote (L.iso V.toList V.fromList) <$> jsonVector p
 
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
@@ -128,24 +116,19 @@ instance IsoFunctor JsonBuilder where
 instance ProductFunctor JsonBuilder where
     -- When building a 'Value' we want to decompose our church pair list tupled
     -- builders and merge the results together.
-    JsonBuilder p <*> JsonBuilder q = JsonBuilder $ \(a,b) -> do
+    JsonBuilder p <*> q = JsonBuilder $ \(a,b) -> do
         a' <- p a
-        b' <- q b
+        b' <- runBuilder q b
         merge a' b'
       where
-        -- We don't support the merging of anything but top level objects.
-        -- Anything else doesn't make sense, you can't define it as a valid
-        -- JSON document.
+        -- Merging of two objects is simply a union, this rule fires when you
+        -- do things like:
         --
-        -- Basically, <*> should only appear between things which look up an
-        -- object. This does not make sense:
-        --
-        --   jsonList jsonBool <*> jsonList jsonBool)
-        --
+        -- jsonField "a" p <*> jsonField "b" p
         merge (Object a) (Object b) = Just . Object $ a `union` b
-        -- We could just return the first when the user does something that
-        -- doesn't make sense, but it is safer to fail so that the problem is
-        -- rectified.
+        -- Merging of head and tail of arrays, this rule fires when using
+        -- things like the many combinator to create a JSON array
+        merge a (Array b) = Just . Array $ V.cons a b
         merge _ _ = Nothing
 
 instance Alternative JsonBuilder where
@@ -158,7 +141,7 @@ instance Alternative JsonBuilder where
 instance Syntax JsonBuilder where
     pure x = JsonBuilder $ \y ->
         if x == y
-            then Just Null
+            then Just $ Array []
             else Nothing
 
 instance JsonSyntax JsonBuilder where
@@ -169,10 +152,6 @@ instance JsonSyntax JsonBuilder where
     runSub (JsonBuilder a) (JsonBuilder b) =
         JsonBuilder $ a >=> b
 
-    -- Given a 'Vector' 'Value' we map the parser provided over it and wrap it
-    -- back up in an array.
-    jsonVector (JsonBuilder p) =
-        JsonBuilder $ fmap Array . V.mapM p
 
 -- | An implementation of 'JsonSyntax' which deconstructs JSON values.
 data JsonParser a = JsonParser
@@ -184,9 +163,14 @@ instance IsoFunctor JsonParser where
     i <$> JsonParser p = JsonParser $ p >=> apply i
 
 instance ProductFunctor JsonParser where
-    --- When coming from a 'Value' we just tuple up the results of the things,
-    --hopefully they line up with the user's data type iso.
-    JsonParser p <*> JsonParser q = JsonParser $ \v -> liftM2 (,) (p v) (q v)
+    -- When coming from a 'Value' we either want to tuple things up, or, in
+    -- the special case of a list, consume the head and pass the tail on. This
+    -- is a simple way of getting the many combinator to work on JSON.
+    JsonParser p <*> q = JsonParser $ \v -> do
+        let (a,b) | Array x <- v  = ( fromMaybe (Object mempty) (x V.!? 0 )
+                                    , Array $ V.tail x {-- lazyness --}   )
+                  | otherwise     =  (v,v)
+        liftM2 (,) (p a) (runParser q b)
 
 instance Alternative JsonParser where
     JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
@@ -200,8 +184,3 @@ instance JsonSyntax JsonParser where
     value = JsonParser Just
 
     runSub (JsonParser a) (JsonParser b) = JsonParser $ b >=> a
-
-    jsonVector (JsonParser p) = JsonParser $ \v ->
-        case v of Array x -> V.mapM p x
-                  _       -> Nothing
-
