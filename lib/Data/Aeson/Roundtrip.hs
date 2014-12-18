@@ -5,7 +5,7 @@
 -- TH does not generate signatures
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
-module Data.Aeson.RoundTrip where
+module Data.Aeson.Roundtrip where
 
 import qualified Control.Category as C
 import Control.Isomorphism.Partial

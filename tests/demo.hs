@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Text.Roundtrip.Classes
 import Text.Roundtrip.Combinators
 
-import Data.Aeson.RoundTrip
+import Data.Aeson.Roundtrip
 
 -- | A silly example
 data Invoice
