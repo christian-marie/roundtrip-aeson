@@ -15,10 +15,10 @@ import Control.Monad (guard, liftM2, mplus, (>=>))
 import Data.Aeson
 import Data.Aeson.Lens
 import Data.HashMap.Strict (union)
-import Data.Maybe
 import Data.Monoid
 import Data.Scientific
 import Data.Text (Text)
+import Data.Vector ((!?))
 import qualified Data.Vector as V
 import Text.Roundtrip.Classes
 
@@ -171,9 +171,9 @@ instance ProductFunctor JsonParser where
     -- the special case of a list, consume the head and pass the tail on. This
     -- is a simple way of getting the many combinator to work on JSON.
     JsonParser p <*> q = JsonParser $ \v -> do
-        let (a,b) | Array x <- v  = ( fromMaybe (Object mempty) (x V.!? 0 )
-                                    , Array $ V.tail x {-- lazyness --}   )
-                  | otherwise     =  (v,v)
+        let (a,b) | Array x <- v, Just y <- x !? 0 = (y, Array $ V.tail x)
+                  | Array _ <- v                   = (Null, Null)
+                  | otherwise                      = (v,v)
         liftM2 (,) (p a) (runParser q b)
 
 instance Alternative JsonParser where
