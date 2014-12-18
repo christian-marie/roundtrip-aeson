@@ -116,6 +116,10 @@ instance IsoFunctor JsonBuilder where
 instance ProductFunctor JsonBuilder where
     -- When building a 'Value' we want to decompose our church pair list tupled
     -- builders and merge the results together.
+    --
+    -- Note that the second argument is not pattern matched, this is to ensure
+    -- that it is not eagerly constructed and does not diverge in things like
+    -- many.
     JsonBuilder p <*> q = JsonBuilder $ \(a,b) -> do
         a' <- p a
         b' <- runBuilder q b
