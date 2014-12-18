@@ -41,7 +41,7 @@ invoiceSyntax =
         -- Ignore "paid", but make sure it's set to False
         <$> jsonField "paid" (jsonBool `is` False)
          *> jsonField "bar" jsonIntegral
-        <*> jsonField "baz" (jsonList jsonBool)
+        <*> jsonField "baz" (many jsonBool)
     -- If the s Invoice above failed, try the one for paid
     <|> paid
         <$> jsonField "paid" (jsonBool `is` True)
@@ -51,7 +51,7 @@ invoiceSyntax =
 accountSyntax :: JsonSyntax s => s Account
 accountSyntax = account
     <$> jsonField "name" jsonString
-    <*> jsonField "invoices" (jsonList invoiceSyntax)
+    <*> jsonField "invoices" (many invoiceSyntax)
 
 -- | A really bad acceptance test
 main :: IO ()
@@ -59,7 +59,7 @@ main = do
     putStrLn "FIELDS"
     putStrLn "\tUNPARSE"
 
-    let Just x = runBuilder invoiceSyntax $ Unpaid 40 [False]
+    let Just x = runBuilder invoiceSyntax $ Unpaid 40 [False, True, False]
     let Just y = runBuilder invoiceSyntax $ Paid 42
 
     L.putStrLn $ "\t" <> encode x
