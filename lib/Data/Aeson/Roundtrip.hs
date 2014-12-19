@@ -170,11 +170,14 @@ instance ProductFunctor JsonParser where
     -- When coming from a 'Value' we either want to tuple things up, or, in
     -- the special case of a list, consume the head and pass the tail on. This
     -- is a simple way of getting the many combinator to work on JSON.
-    JsonParser p <*> JsonParser q = JsonParser $ \v -> do
-        let (a,b) | Array x <- v, Just y <- x !? 0 = (y, Array $ V.tail x)
-                  | Array _ <- v                   = (Null, Null)
-                  | otherwise                      = (v,v)
-        liftM2 (,) (p a) (q b)
+    JsonParser p <*> JsonParser q = JsonParser f
+      where
+        f v | Array x <- v, Just y <- x !? 0
+            = liftM2 (,) (p y) (q . Array $ V.tail x)
+            | Array _ <- v
+            = Nothing
+            | otherwise
+            = liftM2 (,) (p v) (q v)
 
 instance Alternative JsonParser where
     JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
