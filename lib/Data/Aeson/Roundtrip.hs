@@ -105,7 +105,7 @@ jsonString = demote _String <$> value
 -- ** Parsing and unparsing
 
 -- | An implementation of 'JsonSyntax' which constructs JSON values.
-data JsonBuilder a = JsonBuilder
+newtype JsonBuilder a = JsonBuilder
     { runBuilder :: a -> Maybe Value }
 
 instance IsoFunctor JsonBuilder where
@@ -120,9 +120,9 @@ instance ProductFunctor JsonBuilder where
     -- Note that the second argument is not pattern matched, this is to ensure
     -- that it is not eagerly constructed and does not diverge in things like
     -- many.
-    JsonBuilder p <*> q = JsonBuilder $ \(a,b) -> do
+    JsonBuilder p <*> JsonBuilder q = JsonBuilder $ \(a,b) -> do
         a' <- p a
-        b' <- runBuilder q b
+        b' <- q b
         merge a' b'
       where
         -- Merging of two objects is simply a union, this rule fires when you
@@ -158,7 +158,7 @@ instance JsonSyntax JsonBuilder where
 
 
 -- | An implementation of 'JsonSyntax' which deconstructs JSON values.
-data JsonParser a = JsonParser
+newtype JsonParser a = JsonParser
     { runParser :: Value -> Maybe a }
 
 instance IsoFunctor JsonParser where
@@ -170,11 +170,11 @@ instance ProductFunctor JsonParser where
     -- When coming from a 'Value' we either want to tuple things up, or, in
     -- the special case of a list, consume the head and pass the tail on. This
     -- is a simple way of getting the many combinator to work on JSON.
-    JsonParser p <*> q = JsonParser $ \v -> do
+    JsonParser p <*> JsonParser q = JsonParser $ \v -> do
         let (a,b) | Array x <- v, Just y <- x !? 0 = (y, Array $ V.tail x)
                   | Array _ <- v                   = (Null, Null)
                   | otherwise                      = (v,v)
-        liftM2 (,) (p a) (runParser q b)
+        liftM2 (,) (p a) (q b)
 
 instance Alternative JsonParser where
     JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
