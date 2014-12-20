@@ -1,3 +1,5 @@
+{-# LANGUAGE InstanceSigs      #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes        #-}
@@ -20,6 +22,7 @@ import Data.Scientific
 import Data.Text (Text)
 import Data.Vector ((!?))
 import qualified Data.Vector as V
+import Debug.Trace
 import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
@@ -80,6 +83,8 @@ jsonField k syntax = runSub syntax (keyIso <$> value)
     -- of things. This forgets any context.
     keyIso = demote $ prism' (\part -> Object [(k,part)]) (^? key k)
 
+-- * Syntaxes
+
 -- | Un-/parse a boolean JSON value.
 jsonBool :: JsonSyntax s => s Bool
 jsonBool = demote _Bool <$> value
@@ -130,10 +135,13 @@ instance ProductFunctor JsonBuilder where
         --
         -- jsonField "a" p <*> jsonField "b" p
         merge (Object a) (Object b) = Just . Object $ a `union` b
+        -- merge Null (Object b) = Object b
         -- Merging of head and tail of arrays, this rule fires when using
         -- things like the many combinator to create a JSON array
         merge a (Array b) = Just . Array $ V.cons a b
-        merge _ _ = Nothing
+        merge x Null = Just x
+        merge Null x = Just x
+        merge x y = traceShow (x,y) Nothing
 
 instance Alternative JsonBuilder where
     -- Try the left first, then right.
@@ -143,9 +151,19 @@ instance Alternative JsonBuilder where
     empty = JsonBuilder $ const Nothing
 
 instance Syntax JsonBuilder where
+    -- | Have to rewrite Null as [] as pure () is will make a Null as it
+    -- terminates the list.
+    --
+    -- This is so that pure can make nulls, which is "nicer" for things like
+    -- optional.
+    rule "many" _ (JsonBuilder b) =
+        JsonBuilder $ b >=> (\case Null -> Just $ Array mempty
+                                   x    -> Just x)
+    rule _ _ x = x
+
     pure x = JsonBuilder $ \y ->
         if x == y
-            then Just $ Array []
+            then Just Null
             else Nothing
 
 instance JsonSyntax JsonBuilder where
