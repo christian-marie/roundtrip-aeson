@@ -1,4 +1,3 @@
-{-# LANGUAGE InstanceSigs      #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -22,7 +21,6 @@ import Data.Scientific
 import Data.Text (Text)
 import Data.Vector ((!?))
 import qualified Data.Vector as V
-import Debug.Trace
 import Text.Roundtrip.Classes
 
 -- * Lenses, Prisms, and Isomorphisms.
@@ -141,7 +139,7 @@ instance ProductFunctor JsonBuilder where
         merge a (Array b) = Just . Array $ V.cons a b
         merge x Null = Just x
         merge Null x = Just x
-        merge x y = traceShow (x,y) Nothing
+        merge _ _ = Nothing
 
 instance Alternative JsonBuilder where
     -- Try the left first, then right.
