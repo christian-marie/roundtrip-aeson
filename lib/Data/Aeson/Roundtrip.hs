@@ -65,10 +65,10 @@ demote name p = unsafeMakeNamedIso name (preview p) (review (_Just . p))
 demoteLR :: (Show a, Show b) => String -> Prism' a b -> Iso a b
 demoteLR name p = unsafeMakeNamedIsoLR name (preview p) (review (_Just . p))
 
-demoteL :: (Show a) => String -> Prism' a b -> Iso a b
+demoteL :: Show a => String -> Prism' a b -> Iso a b
 demoteL name p = unsafeMakeNamedIsoL name (preview p) (review (_Just . p))
 
-demoteR :: (Show b) => String -> Prism' a b -> Iso a b
+demoteR :: Show b => String -> Prism' a b -> Iso a b
 demoteR name p = unsafeMakeNamedIsoR name (preview p) (review (_Just . p))
 
 -- | Parse and unparse JSON values.
@@ -93,7 +93,7 @@ is s a = demoteR "is" (prism' (const a) (guard . (a ==))) <$> s
 -- the way "back" from JSON, but never ends up in the JSON document.
 --
 -- This is almost like pure, going one way.
-wat :: (JsonSyntax s) => a -> s a
+wat :: JsonSyntax s => a -> s a
 wat a = demoteL "wat"
                 (prism' (const $ Object mempty) (const $ Just a)) <$> value
 
