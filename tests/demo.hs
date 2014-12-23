@@ -59,8 +59,8 @@ main = do
     putStrLn "FIELDS"
     putStrLn "\tUNPARSE"
 
-    let Just x = runBuilder invoiceSyntax $ Unpaid 40 [False, True, False]
-    let Just y = runBuilder invoiceSyntax $ Paid 42
+    let Right x = runBuilder invoiceSyntax $ Unpaid 40 [False, True, False]
+    let Right y = runBuilder invoiceSyntax $ Paid 42
 
     L.putStrLn $ "\t" <> encode x
     L.putStrLn $ "\t" <> encode y
@@ -73,13 +73,13 @@ main = do
     putStrLn "\n\nLISTS"
     putStrLn "\tUNPARSE"
 
-    let Just z1 = runBuilder accountSyntax $ Account "Foo"
+    let Right z1 = runBuilder accountSyntax $ Account "Foo"
             [ Unpaid 44 [True]
             , Paid 46
             ]
     L.putStrLn $ "\t" <> encode z1
 
-    let Just z2 = runBuilder accountSyntax $ Account "Bar" []
+    let Right z2 = runBuilder accountSyntax $ Account "Bar" []
     L.putStrLn $ "\t" <> encode z2
 
     putStrLn "\n\tPARSE"
