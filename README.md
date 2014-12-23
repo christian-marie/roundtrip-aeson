@@ -48,7 +48,7 @@ invoiceSyntax =
 main :: IO ()
 main = do
     -- Build a JSON representation.
-    let Just x = runBuilder invoiceSyntax $ Unpaid False 40 [False]
+    let Right x = runBuilder invoiceSyntax $ Unpaid False 40 [False]
     L.putStrLn $ encode x
     -- Parse a JSON representation.
     print $ runParser invoiceSyntax x
