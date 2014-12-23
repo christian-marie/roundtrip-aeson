@@ -1,5 +1,5 @@
 name:                roundtrip-aeson
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Un-/parse JSON with roundtrip invertible syntax definitions.
 description:         Un-/parse JSON with roundtrip invertible syntax definitions.
 homepage:            https://github.com/anchor/roundtrip-aeson
