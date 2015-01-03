@@ -31,21 +31,21 @@ module Data.Aeson.Roundtrip
 )
 where
 
-import Control.Category ((.))
-import Control.Isomorphism.Partial
-import Control.Lens hiding (Iso)
-import qualified Control.Lens as L
-import Control.Monad (guard, liftM2, mplus, (>=>))
-import Data.Aeson
-import Data.Aeson.Lens
-import Data.HashMap.Strict (union)
-import Data.Monoid
-import Data.Scientific
-import Data.Text (Text)
-import Data.Vector ((!?))
-import qualified Data.Vector as V
-import Prelude hiding ((.))
-import Text.Roundtrip.Classes
+import           Control.Category            ((.))
+import           Control.Isomorphism.Partial
+import           Control.Lens                hiding (Iso)
+import qualified Control.Lens                as L
+import           Control.Monad               (guard, liftM2, mplus, (>=>))
+import           Data.Aeson
+import           Data.Aeson.Lens
+import           Data.HashMap.Strict         (union)
+import           Data.Monoid
+import           Data.Scientific
+import           Data.Text                   (Text)
+import           Data.Vector                 ((!?))
+import qualified Data.Vector                 as V
+import           Prelude                     hiding ((.))
+import           Text.Roundtrip.Classes
 
 
 -- | Demote a lens 'Prism' to a partial 'Iso'.

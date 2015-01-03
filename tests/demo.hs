@@ -6,15 +6,15 @@
 
 module Main where
 
-import Control.Isomorphism.Partial
-import Data.Aeson
-import qualified Data.ByteString.Lazy.Char8 as L
-import Data.Monoid
-import Data.Text (Text)
-import Text.Roundtrip.Classes
-import Text.Roundtrip.Combinators
+import           Control.Isomorphism.Partial
+import           Data.Aeson
+import qualified Data.ByteString.Lazy.Char8  as L
+import           Data.Monoid
+import           Data.Text                   (Text)
+import           Text.Roundtrip.Classes
+import           Text.Roundtrip.Combinators
 
-import Data.Aeson.Roundtrip
+import           Data.Aeson.Roundtrip
 
 -- | A silly example
 data Invoice
