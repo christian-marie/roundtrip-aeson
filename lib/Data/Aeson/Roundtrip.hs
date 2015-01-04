@@ -181,7 +181,7 @@ instance ProductFunctor JsonBuilder where
         merge x Null = Right x
         merge Null x = Right x
         merge x y = Left $
-            "Don't know how to merge: " ++ show x ++ " <*> " ++ show y
+            "Don't know how to merge: " <> show x <> " <*> " <> show y
 
 instance Alternative JsonBuilder where
     -- Try the left first, then right.
