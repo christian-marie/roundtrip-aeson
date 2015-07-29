@@ -1,13 +1,12 @@
 Roundtrip Aeson
 ===============
 
+[![Build Status][6]][7]
+
 [roundtrip][1] allows you to write [invertible syntax descriptions][2] -- or,
 to put it another way, a parser and pretty printer combined -- for String or
 XML data. This package extends this to support constructing and destructing
 JSON documents.
-
-[1]: https://hackage.haskell.org/package/roundtrip
-[2]: http://scholar.google.com/scholar?cluster=14145973580303258649
 
 Example
 -------
@@ -22,9 +21,6 @@ Using `roundtrip-aeson` is relatively straightforward:
 2. Describe the syntax of its JSON representation; and
 
 3. Use that representation to build and parse JSON.
-
-[3]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-Iso.html
-[4]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-TH.html
 
 ````{.haskell}
 import Data.Aeson.RoundTrip
@@ -56,4 +52,10 @@ main = do
 
 See [tests/demo.hs][5] for the complete source of this example.
 
+[1]: https://hackage.haskell.org/package/roundtrip
+[2]: http://scholar.google.com/scholar?cluster=14145973580303258649
+[3]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-Iso.html
+[4]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-TH.html
 [5]: https://github.com/anchor/roundtrip-aeson/blob/master/tests/demo.hs
+[6]: https://travis-ci.org/anchor/roundtrip-aeson.svg?branch=master
+[7]: https://travis-ci.org/anchor/roundtrip-aeson
