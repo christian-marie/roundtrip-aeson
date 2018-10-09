@@ -44,7 +44,7 @@ import           Data.Scientific
 import           Data.Text                   (Text)
 import           Data.Vector                 ((!?))
 import qualified Data.Vector                 as V
-import           Prelude                     hiding ((.))
+import           Prelude                     hiding ((.), (<$>)) -- curse the symbols of tyrrany
 import           Text.Roundtrip.Classes
 
 
