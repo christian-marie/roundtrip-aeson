@@ -1,6 +1,0 @@
-flags: {}
-packages:
-- '.'
-extra-deps:
-- roundtrip-0.2.0.3
-resolver: lts-2.20
