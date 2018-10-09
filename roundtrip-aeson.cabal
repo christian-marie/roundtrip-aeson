@@ -1,12 +1,12 @@
 name:                roundtrip-aeson
-version:             0.2.0.0
+version:             0.2.0.1
 synopsis:            Un-/parse JSON with roundtrip invertible syntax definitions.
 description:         Un-/parse JSON with roundtrip invertible syntax definitions.
 homepage:            https://github.com/anchor/roundtrip-aeson
 license:             BSD3
 license-file:        LICENSE
 author:              Thomas Sutton <me@thomas-sutton.id.au>, Christian Marie <christian@ponies.io>
-maintainer:          Anchor Engineering <engineering@anchor.net.au>
+maintainer:          Christian Marie
 copyright:           Copyright 2014-2015 Anchor Systems and others.
 category:            Data
 build-type:          Simple
