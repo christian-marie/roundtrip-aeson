@@ -56,6 +56,6 @@ See [tests/demo.hs][5] for the complete source of this example.
 [2]: http://scholar.google.com/scholar?cluster=14145973580303258649
 [3]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-Iso.html
 [4]: https://hackage.haskell.org/package/roundtrip/docs/Control-Isomorphism-Partial-TH.html
-[5]: https://github.com/anchor/roundtrip-aeson/blob/master/tests/demo.hs
-[6]: https://travis-ci.org/anchor/roundtrip-aeson.svg?branch=master
-[7]: https://travis-ci.org/anchor/roundtrip-aeson
+[5]: https://github.com/christian-marie/roundtrip-aeson/blob/master/tests/demo.hs
+[6]: https://travis-ci.org/christian-marie/roundtrip-aeson.svg?branch=master
+[7]: https://travis-ci.org/christian-marie/roundtrip-aeson
