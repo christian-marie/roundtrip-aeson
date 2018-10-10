@@ -7,6 +7,7 @@
 module Main where
 
 import           Control.Isomorphism.Partial
+import           Prelude hiding ((<$>), (*>), (<*>))
 import           Data.Aeson
 import qualified Data.ByteString.Lazy.Char8  as L
 import           Data.Monoid

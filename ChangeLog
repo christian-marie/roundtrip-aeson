@@ -1,3 +1,7 @@
 Tue Oct  9 20:06:26 AEDT 2018
 
 Fixed build under ghc-8.2.2 and nix
+
+Wed Oct 10 13:09:40 AEDT 2018
+
+Fixed demo.hs for new prelude
