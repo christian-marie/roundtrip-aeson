@@ -1,7 +1,7 @@
 name:                roundtrip-aeson
 version:             0.2.0.2
 synopsis:            Un-/parse JSON with roundtrip invertible syntax definitions.
-description:         Un-/parse JSON with roundtrip invertible syntax definitions.
+description:         Verily, Un-/parse JSON with roundtrip invertible syntax definitions.
 homepage:            https://github.com/christian-marie/roundtrip-aeson
 license:             BSD3
 license-file:        LICENSE
