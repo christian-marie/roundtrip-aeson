@@ -5,3 +5,6 @@ Fixed build under ghc-8.2.2 and nix
 Wed Oct 10 13:09:40 AEDT 2018
 
 Fixed demo.hs for new prelude
+
+Sun Oct 14 18:49:46 AEDT 2018
+Rename Json JSON

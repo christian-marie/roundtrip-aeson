@@ -9,8 +9,8 @@
 module Data.Aeson.Roundtrip
 (
     -- * Parser/Builder
-    JsonParser(..),
-    JsonBuilder(..),
+    JSONParser(..),
+    JSONBuilder(..),
     -- * Combinators
     is,
     wat,
@@ -27,7 +27,7 @@ module Data.Aeson.Roundtrip
     demoteL,
     demoteR,
     -- * JSON Syntax
-    JsonSyntax (..)
+    JSONSyntax (..)
 )
 where
 
@@ -72,7 +72,7 @@ demoteR :: Show b => String -> Prism' a b -> Iso a b
 demoteR name p = unsafeMakeNamedIsoR name (preview p) (review (_Just . p))
 
 -- | Parse and unparse JSON values.
-class Syntax s => JsonSyntax s where
+class Syntax s => JSONSyntax s where
 
     -- | Run a parser over some other parser.
     --
@@ -86,20 +86,20 @@ class Syntax s => JsonSyntax s where
 -- | Ensure that a value 'a' is "produced" or "consumed".
 --
 -- This is intended to be used infix in conjunction with *> and <*
-is :: (JsonSyntax s, Eq a) => s a -> a -> s ()
+is :: (JSONSyntax s, Eq a) => s a -> a -> s ()
 is s a = demoteR "is" (prism' (const a) (guard . (a ==))) <$> s
 
 -- | With Arbitrary Thing: Given a thing, ensure that it is always included on
 -- the way "back" from JSON, but never ends up in the JSON document.
 --
 -- This is almost like pure, going one way.
-wat :: JsonSyntax s => a -> s a
+wat :: JSONSyntax s => a -> s a
 wat a = demoteL "wat"
                 (prism' (const $ Object mempty) (const $ Just a)) <$> value
 
 -- | Un-/parse from within a field in a JSON object.
 jsonField
-    :: JsonSyntax s
+    :: JSONSyntax s
     => Text
     -- ^ Key to lookup/insert
     -> s v
@@ -112,26 +112,26 @@ jsonField k syntax = runSub syntax (keyIso <$> value)
     keyIso = demoteLR ("key " <> show k) $ prism' (\part -> Object [(k,part)]) (^? key k)
 
 -- | Un-/parse a boolean JSON value.
-jsonBool :: JsonSyntax s => s Bool
+jsonBool :: JSONSyntax s => s Bool
 jsonBool = demoteLR "jsonBool" _Bool <$> value
 
 -- | Un-/parse a number JSON value.
-jsonNumber :: JsonSyntax s => s Scientific
+jsonNumber :: JSONSyntax s => s Scientific
 jsonNumber = demoteLR "jsonNumber" _Number <$> value
 
 -- | Un-/parse an integral number JSON value.
-jsonIntegral :: (Integral a, JsonSyntax s) => s a
+jsonIntegral :: (Integral a, JSONSyntax s) => s a
 jsonIntegral = demoteL "jsonIntegral" _Integral <$> value
 
 -- | Un-/parse a floating number JSON value.
-jsonRealFloat :: (RealFloat a, JsonSyntax s) => s a
+jsonRealFloat :: (RealFloat a, JSONSyntax s) => s a
 jsonRealFloat = i . demoteL "jsonRealFloat (number)" _Number <$> value
   where
     i = demoteL "jsonRealFloat (toRealFloat)" $
             L.iso toRealFloat (fromRational . toRational)
 
 -- | Un-/parse a string JSON value.
-jsonString :: JsonSyntax s => s Text
+jsonString :: JSONSyntax s => s Text
 jsonString = demoteLR "String" _String <$> value
 
 -- | Try to apply an iso, provide message on failure
@@ -148,23 +148,23 @@ tryRL i b =
         Just x -> Right x
         Nothing -> Left $ isoFailedErrorMessageR i b
 
--- | An implementation of 'JsonSyntax' which constructs JSON values.
-newtype JsonBuilder a = JsonBuilder
+-- | An implementation of 'JSONSyntax' which constructs JSON values.
+newtype JSONBuilder a = JSONBuilder
     { runBuilder :: a -> Either String Value }
 
-instance IsoFunctor JsonBuilder where
+instance IsoFunctor JSONBuilder where
     -- When going from a to 'Value' we simply want to compose the possible iso
     -- failures in the 'unapply' direction.
-    i <$> JsonBuilder b = JsonBuilder $ tryRL i >=> b
+    i <$> JSONBuilder b = JSONBuilder $ tryRL i >=> b
 
-instance ProductFunctor JsonBuilder where
+instance ProductFunctor JSONBuilder where
     -- When building a 'Value' we want to decompose our church pair list tupled
     -- builders and merge the results together.
     --
     -- Note that the second argument is not pattern matched, this is to ensure
     -- that it is not eagerly constructed and does not diverge in things like
     -- many.
-    JsonBuilder p <*> JsonBuilder q = JsonBuilder $ \(a,b) -> do
+    JSONBuilder p <*> JSONBuilder q = JSONBuilder $ \(a,b) -> do
         a' <- p a
         b' <- q b
         merge a' b'
@@ -183,52 +183,52 @@ instance ProductFunctor JsonBuilder where
         merge x y = Left $
             "Don't know how to merge: " <> show x <> " <*> " <> show y
 
-instance Alternative JsonBuilder where
+instance Alternative JSONBuilder where
     -- Try the left first, then right.
-    JsonBuilder p <||> JsonBuilder q = JsonBuilder $ \a -> p a `mplus` q a
+    JSONBuilder p <||> JSONBuilder q = JSONBuilder $ \a -> p a `mplus` q a
 
     -- Always Left
-    empty = JsonBuilder . const $ Left "empty"
+    empty = JSONBuilder . const $ Left "empty"
 
-instance Syntax JsonBuilder where
+instance Syntax JSONBuilder where
     -- | Have to rewrite Null as [] as pure () is will make a Null as it
     -- terminates the list.
     --
     -- This is so that pure can make nulls, which is "nicer" for things like
     -- optional.
-    rule "many" _ (JsonBuilder b) =
-        JsonBuilder $ b >=> (\case Null -> Right $ Array mempty
+    rule "many" _ (JSONBuilder b) =
+        JSONBuilder $ b >=> (\case Null -> Right $ Array mempty
                                    x    -> Right x)
     rule _ _ x = x
 
-    pure x = JsonBuilder $ \y ->
+    pure x = JSONBuilder $ \y ->
         if x == y
             then Right Null
             else Left "pure, x /= y"
 
-instance JsonSyntax JsonBuilder where
+instance JSONSyntax JSONBuilder where
     -- | To roduces a 'Value', we simply need to pass it through.
-    value = JsonBuilder Right
+    value = JSONBuilder Right
 
     -- Run a sub-parser. Just composition, really.
-    runSub (JsonBuilder a) (JsonBuilder b) =
-        JsonBuilder $ a >=> b
+    runSub (JSONBuilder a) (JSONBuilder b) =
+        JSONBuilder $ a >=> b
 
 
--- | An implementation of 'JsonSyntax' which deconstructs JSON values.
-newtype JsonParser a = JsonParser
+-- | An implementation of 'JSONSyntax' which deconstructs JSON values.
+newtype JSONParser a = JSONParser
     { runParser :: Value -> Either String a }
 
-instance IsoFunctor JsonParser where
-    -- The opposite of a JsonParser in both order of composition and direction
+instance IsoFunctor JSONParser where
+    -- The opposite of a JSONParser in both order of composition and direction
     -- of iso
-    i <$> JsonParser p = JsonParser $ p >=> tryLR i
+    i <$> JSONParser p = JSONParser $ p >=> tryLR i
 
-instance ProductFunctor JsonParser where
+instance ProductFunctor JSONParser where
     -- When coming from a 'Value' we either want to tuple things up, or, in
     -- the special case of a list, consume the head and pass the tail on. This
     -- is a simple way of getting the many combinator to work on JSON.
-    JsonParser p <*> JsonParser q = JsonParser f
+    JSONParser p <*> JSONParser q = JSONParser f
       where
         f v | Array x <- v, Just y <- x !? 0
             = liftM2 (,) (p y) (q . Array $ V.tail x)
@@ -237,15 +237,15 @@ instance ProductFunctor JsonParser where
             | otherwise
             = liftM2 (,) (p v) (q v)
 
-instance Alternative JsonParser where
-    JsonParser p <||> JsonParser q = JsonParser $ \v -> p v `mplus` q v
+instance Alternative JSONParser where
+    JSONParser p <||> JSONParser q = JSONParser $ \v -> p v `mplus` q v
 
-    empty = JsonParser . const $ Left "empty"
+    empty = JSONParser . const $ Left "empty"
 
-instance Syntax JsonParser where
-    pure = JsonParser . const . Right
+instance Syntax JSONParser where
+    pure = JSONParser . const . Right
 
-instance JsonSyntax JsonParser where
-    value = JsonParser Right
+instance JSONSyntax JSONParser where
+    value = JSONParser Right
 
-    runSub (JsonParser a) (JsonParser b) = JsonParser $ b >=> a
+    runSub (JSONParser a) (JSONParser b) = JSONParser $ b >=> a

@@ -34,8 +34,8 @@ defineIsomorphisms ''Account
 -- | A syntax is an abstract representation of the structure of a document.
 --
 -- It is built up by composing partial isomorphisms which have been
--- 'IsoFunctor' fmapped onto the 'JsonSyntax' value primitive.
-invoiceSyntax :: JsonSyntax s => s Invoice
+-- 'IsoFunctor' fmapped onto the 'JSONSyntax' value primitive.
+invoiceSyntax :: JSONSyntax s => s Invoice
 invoiceSyntax =
     -- unpaid is an iso from Invoice to (Integer, [Bool])
     unpaid
@@ -49,7 +49,7 @@ invoiceSyntax =
          *> jsonField "bar" jsonRealFloat
 
 -- | An example of nesting syntax definitions
-accountSyntax :: JsonSyntax s => s Account
+accountSyntax :: JSONSyntax s => s Account
 accountSyntax = account
     <$> jsonField "name" jsonString
     <*> jsonField "invoices" (many invoiceSyntax)
